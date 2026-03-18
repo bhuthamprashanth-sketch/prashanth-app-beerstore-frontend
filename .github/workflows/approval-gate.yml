@@ -1,0 +1,47 @@
+name: PR Approval Gate
+
+on:
+  pull_request:
+    branches: [ develop, release, main ]
+    types: [opened, reopened, synchronize, ready_for_review, edited]
+  pull_request_review:
+    types: [submitted, dismissed]
+
+jobs:
+  approval-gate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Require at least one approval
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            if (!pr) {
+              core.setFailed('No pull request context found.');
+              return;
+            }
+
+            const reviews = await github.paginate(github.rest.pulls.listReviews, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number
+            });
+
+            const latestStateByUser = new Map();
+            for (const review of reviews) {
+              latestStateByUser.set(review.user.login, review.state);
+            }
+
+            const approvals = [...latestStateByUser.entries()]
+              .filter(([login, state]) => state === 'APPROVED' && login !== pr.user.login)
+              .map(([login]) => login);
+
+            if (approvals.length < 1) {
+              core.setFailed('At least 1 approval from another reviewer is required.');
+              return;
+            }
+
+            core.info(`Approval gate passed with reviewers: ${approvals.join(', ')}`);
