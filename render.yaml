@@ -1,0 +1,60 @@
+services:
+  # Production Frontend (main branch)
+  - type: web
+    name: prashanth-app-beerstore
+    env: node
+    plan: starter
+    branch: main
+    buildCommand: npm install && npm run build
+    startCommand: npm run serve
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+    staticSite: false
+
+  # Staging Frontend (release branch)
+  - type: web
+    name: prashanth-app-beerstore-stg
+    env: node
+    plan: starter
+    branch: release
+    buildCommand: npm install && npm run build
+    startCommand: npm run serve
+    envVars:
+      - key: NODE_ENV
+        value: staging
+      - key: PORT
+        value: 5000
+    staticSite: false
+
+  # QA Frontend (qa branch)
+  - type: web
+    name: prashanth-app-beerstore-qa1
+    env: node
+    plan: starter
+    branch: qa
+    buildCommand: npm install && npm run build
+    startCommand: npm run serve
+    envVars:
+      - key: NODE_ENV
+        value: qa
+      - key: PORT
+        value: 5000
+    staticSite: false
+
+  # Development Frontend (develop branch)
+  - type: web
+    name: prashanth-app-beerstore-dev1
+    env: node
+    plan: starter
+    branch: develop
+    buildCommand: npm install && npm run build
+    startCommand: npm run serve
+    envVars:
+      - key: NODE_ENV
+        value: development
+      - key: PORT
+        value: 5000
+    staticSite: false
