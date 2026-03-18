@@ -1,0 +1,39 @@
+name: Branch Flow Policy
+
+on:
+  pull_request:
+    branches: [ develop, release, main ]
+
+jobs:
+  enforce-flow:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate PR source/target flow
+        run: |
+          BASE="${{ github.base_ref }}"
+          HEAD="${{ github.head_ref }}"
+
+          echo "Base: $BASE"
+          echo "Head: $HEAD"
+
+          if [ "$BASE" = "develop" ]; then
+            if [[ "$HEAD" != feature/* ]]; then
+              echo "Only feature/* branches can merge into develop"
+              exit 1
+            fi
+          elif [ "$BASE" = "release" ]; then
+            if [ "$HEAD" != "develop" ]; then
+              echo "Only develop can merge into release"
+              exit 1
+            fi
+          elif [ "$BASE" = "main" ]; then
+            if [ "$HEAD" != "release" ]; then
+              echo "Only release can merge into main"
+              exit 1
+            fi
+          else
+            echo "Invalid target branch: $BASE"
+            exit 1
+          fi
+
+          echo "Branch flow policy passed"
