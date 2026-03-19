@@ -1,0 +1,100 @@
+name: Jira Sync
+
+on:
+  pull_request:
+    branches: [ develop, release, main, qa ]
+    types: [opened, reopened, ready_for_review, closed]
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  jira-transition:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login to Jira
+        uses: atlassian/gajira-login@v3
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+
+      - name: Extract Jira issue key from PR title or branch
+        id: jira-key
+        run: |
+          KEY=$(echo "${{ github.event.pull_request.title }} ${{ github.head_ref }}" | grep -oE '[A-Z]+-[0-9]+' | head -1)
+          echo "key=$KEY" >> $GITHUB_OUTPUT
+          echo "Found Jira key: $KEY"
+
+      - name: PR Opened → Move ticket to In Review
+        if: |
+          steps.jira-key.outputs.key != '' &&
+          github.event.action == 'opened' || github.event.action == 'reopened'
+        uses: atlassian/gajira-transition@v3
+        with:
+          issue: ${{ steps.jira-key.outputs.key }}
+          transition: "In Review"
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+
+      - name: PR Merged to develop → Move ticket to In Progress
+        if: |
+          steps.jira-key.outputs.key != '' &&
+          github.event.action == 'closed' &&
+          github.event.pull_request.merged == true &&
+          github.base_ref == 'develop'
+        uses: atlassian/gajira-transition@v3
+        with:
+          issue: ${{ steps.jira-key.outputs.key }}
+          transition: "In Progress"
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+
+      - name: PR Merged to release/qa → Move ticket to Testing
+        if: |
+          steps.jira-key.outputs.key != '' &&
+          github.event.action == 'closed' &&
+          github.event.pull_request.merged == true &&
+          (github.base_ref == 'release' || github.base_ref == 'qa')
+        uses: atlassian/gajira-transition@v3
+        with:
+          issue: ${{ steps.jira-key.outputs.key }}
+          transition: "Testing"
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+
+      - name: PR Merged to main → Move ticket to Done
+        if: |
+          steps.jira-key.outputs.key != '' &&
+          github.event.action == 'closed' &&
+          github.event.pull_request.merged == true &&
+          github.base_ref == 'main'
+        uses: atlassian/gajira-transition@v3
+        with:
+          issue: ${{ steps.jira-key.outputs.key }}
+          transition: "Done"
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+
+      - name: Add PR link as Jira comment
+        if: steps.jira-key.outputs.key != ''
+        uses: atlassian/gajira-comment@v3
+        with:
+          issue: ${{ steps.jira-key.outputs.key }}
+          comment: |
+            *[Frontend Repo - GitHub PR]*
+            PR: [${{ github.event.pull_request.title }}](${{ github.event.pull_request.html_url }})
+            Branch: `${{ github.head_ref }}` → `${{ github.base_ref }}`
+            Status: ${{ github.event.action == 'closed' && github.event.pull_request.merged && '✅ Merged' || github.event.action == 'closed' && '❌ Closed without merge' || '🔍 Open for review' }}
+            Author: ${{ github.event.pull_request.user.login }}
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}

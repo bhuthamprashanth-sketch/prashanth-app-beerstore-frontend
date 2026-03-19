@@ -1,3 +1,7 @@
+## Jira Ticket
+<!-- REQUIRED: Include ticket ID e.g. BEER-123 so Jira auto-updates -->
+Ticket: BEER-
+
 ## Summary
 - What changed?
 
@@ -7,11 +11,12 @@
 - [ ] Refactor
 - [ ] Docs
 
-## Branch Flow Checklist
-- [ ] Source branch is `feature/*` when targeting `develop`
-- [ ] PR from `develop` to `release` only after QA sign-off
-- [ ] PR from `release` to `main` only after UAT sign-off
+## Branch Flow
+- [ ] `feature/*` → `develop` (moves ticket: In Review → In Progress)
+- [ ] `develop` → `release` (moves ticket: In Progress → Testing)
+- [ ] `release` → `main` (moves ticket: Testing → Done ✅)
 
 ## Validation
 - [ ] Frontend builds successfully
 - [ ] Screens tested on desktop/mobile
+- [ ] No breaking changes
